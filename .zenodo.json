@@ -1,0 +1,9 @@
+{
+  "title": "CoralScape 20K: a persistent digital specimen collection of Caribbean corals",
+  "upload_type": "dataset",
+  "description": "Metadata and project overview for CoralScape 20K, a persistent digital specimen collection of 20,000 corals across 35 shallow and mesophotic monitoring plots in Curaçao, tracked through repeated 3D photogrammetry and whole-genome sequencing.",
+  "creators": [
+    { "name": "Bongaerts, Pim", "affiliation": "California Academy of Sciences" }
+  ],
+  "keywords": ["coral", "mesophotic", "photogrammetry", "genomics", "Curaçao", "Caribbean", "digital specimens"]
+}

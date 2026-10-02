@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use CoralScape 20K data or metadata, please cite it as below."
+title: "CoralScape 20K: a persistent digital specimen collection of Caribbean corals"
+type: dataset
+authors:
+  - family-names: Bongaerts
+    given-names: Pim
+    affiliation: "California Academy of Sciences"
+repository-code: "https://github.com/reefscapegenomics/coralscape20k"
+keywords:
+  - coral
+  - mesophotic
+  - photogrammetry
+  - genomics
+  - Curaçao
+  - Caribbean
+  - digital specimens
