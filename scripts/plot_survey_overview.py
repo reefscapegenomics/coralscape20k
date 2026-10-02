@@ -2,9 +2,12 @@
 """
 Draws the survey coverage figures for the README from the CSVs in data/:
 
-  data/survey_overview_primary.csv     -> assets/img/survey_overview.svg
+  data/survey_overview_primary.csv     -> assets/img/survey_overview_{light,dark}.svg
   data/survey_overview_additional.csv  /
-  data/medium_overview.csv             -> assets/img/medium_overview.svg
+  data/medium_overview.csv             -> assets/img/medium_overview_{light,dark}.svg
+
+Each figure is drawn on a transparent background in a light and a dark version,
+which the README switches between with <picture> to match the reader's theme.
 
 Rerun after updating the CSVs:  python3 scripts/plot_survey_overview.py
 Uses only the Python standard library.
@@ -18,18 +21,18 @@ DATA, IMG = ROOT / 'data', ROOT / 'assets' / 'img'
 
 FIGURES = [
     {
-        'title': 'Monitoring plots',
+        'title': 'Monitoring plots (100 m²)',
         'unit': 'plots',
         'sections': [('Core monitoring plots', DATA / 'survey_overview_primary.csv'),
                      ('Additional plots', DATA / 'survey_overview_additional.csv')],
-        'output': IMG / 'survey_overview.svg',
+        'output': 'survey_overview',
         'legend': True,
     },
     {
-        'title': 'Medium areas',
+        'title': 'Medium area plots (50–150 m wide)',
         'unit': 'areas',
         'sections': [(None, DATA / 'medium_overview.csv')],
-        'output': IMG / 'medium_overview.svg',
+        'output': 'medium_overview',
         'legend': False,
     },
 ]
@@ -38,12 +41,15 @@ SURVEYED = '✓'
 # Reefscape Genomics Lab logo colors, warm (shallow) to blue (deep)
 DEPTH_COLORS = {5: '#F0703A', 10: '#FFB81C', 20: '#25BD59', 40: '#00B2E5', 60: '#0078BF'}
 NO_DEPTH_COLOR = '#00C2A6'
-BG, INK, MUTED, EMPTY = '#000000', '#ffffff', '#8a8a8a', '#ffffff'
+THEMES = {
+    'light': {'title': '#009CDE', 'ink': '#1f2328', 'muted': '#59636e', 'empty': '#1f2328'},
+    'dark': {'title': '#00B2E5', 'ink': '#f0f6fc', 'muted': '#9198a1', 'empty': '#f0f6fc'},
+}
 FONT = "'Myriad Pro', 'Source Sans 3', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
 
 # Layout (px)
 WIDTH = 880
-PAD = 32
+PAD = 4             # no card around the figure, so only a small margin
 LABEL_W = 96        # site and depth labels
 COUNT_W = 44        # n surveys column
 ROW_H = 15
@@ -77,8 +83,8 @@ def split_label(label):
     return month, year
 
 
-def text(x, y, s, size=11, fill=INK, anchor='start', weight='400', spacing=0):
-    return (f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}" fill="{fill}" font-weight="{weight}" '
+def text(x, y, s, size=11, fill='ink', anchor='start', weight='400', spacing=0):
+    return (f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}" fill="{{{fill}}}" font-weight="{weight}" '
             f'letter-spacing="{spacing}" text-anchor="{anchor}">{s}</text>')
 
 
@@ -100,24 +106,24 @@ def draw(fig):
     n_sites = len({r[0] for s in sections for r in s[2]})
     n_models = sum(sum(done) for s in sections for _, _, done in s[2])
     first_year, last_year = split_label(surveys[0])[1], split_label(surveys[-1])[1]
-    out.append(text(PAD, y + 14, fig['title'], size=22, fill='#00B2E5', weight='700'))
+    out.append(text(PAD, y + 14, fig['title'], size=22, fill='title', weight='700'))
     summary = (f'{n_rows} {fig["unit"]} · {n_sites} sites · {n_cols} surveys · '
                f'{n_models} 3D models · {first_year}–{last_year}')
-    out.append(text(WIDTH - PAD, y + 14, summary, size=12, fill=MUTED, anchor='end'))
+    out.append(text(WIDTH - PAD, y + 14, summary, size=12, fill='muted', anchor='end'))
     y += 40
 
     # Depth legend
     if fig['legend']:
         lx = PAD
-        out.append(text(lx, y + 9, 'DEPTH', size=10, fill=MUTED, weight='600', spacing=1.5))
+        out.append(text(lx, y + 9, 'DEPTH', size=10, fill='muted', weight='600', spacing=1.5))
         lx += 52
         for depth, color in DEPTH_COLORS.items():
             out.append(f'<rect x="{lx}" y="{y}" width="22" height="{CELL_H}" rx="2" fill="{color}"/>')
-            out.append(text(lx + 28, y + 9, f'{depth} m', size=11, fill=MUTED))
+            out.append(text(lx + 28, y + 9, f'{depth} m', size=11, fill='muted'))
             lx += 78
         out.append(f'<rect x="{lx + 12}" y="{y}" width="22" height="{CELL_H}" rx="2" fill="none" '
-                   f'stroke="{EMPTY}" stroke-opacity=".22"/>')
-        out.append(text(lx + 40, y + 9, 'not surveyed', size=11, fill=MUTED))
+                   f'stroke="{{empty}}" stroke-opacity=".22"/>')
+        out.append(text(lx + 40, y + 9, 'not surveyed', size=11, fill='muted'))
         y += 36
 
     # Column headers: year on top (once per year), month below
@@ -127,17 +133,17 @@ def draw(fig):
         if year != prev_year:
             out.append(text(grid_x + i * col_w + 2, y, year, size=11, weight='600'))
             prev_year = year
-        out.append(text(grid_x + i * col_w + col_w / 2, y + 16, month, size=10, fill=MUTED, anchor='middle'))
-    out.append(text(WIDTH - PAD, y + 16, 'n', size=10, fill=MUTED, anchor='end', weight='600'))
+        out.append(text(grid_x + i * col_w + col_w / 2, y + 16, month, size=10, fill='muted', anchor='middle'))
+    out.append(text(WIDTH - PAD, y + 16, 'n', size=10, fill='muted', anchor='end', weight='600'))
     y += 26
 
     for s_idx, (title, _, rows) in enumerate(sections):
         if title:
             if s_idx > 0:
                 y += SECTION_GAP - GROUP_GAP
-            out.append(text(PAD, y + 10, title.upper(), size=10, fill=MUTED, weight='600', spacing=1.5))
+            out.append(text(PAD, y + 10, title.upper(), size=10, fill='muted', weight='600', spacing=1.5))
             out.append(f'<line x1="{grid_x}" x2="{WIDTH - PAD}" y1="{y + 6}" y2="{y + 6}" '
-                       f'stroke="{EMPTY}" stroke-opacity=".15"/>')
+                       f'stroke="{{empty}}" stroke-opacity=".15"/>')
             y += 20
         prev_site = None
         for site, depth, done in rows:
@@ -146,7 +152,7 @@ def draw(fig):
             if site != prev_site:
                 out.append(text(PAD, y + 10, site, size=12, weight='600'))
             if depth is not None:
-                out.append(text(grid_x - 10, y + 10, f'{depth} m', size=10, fill=MUTED, anchor='end'))
+                out.append(text(grid_x - 10, y + 10, f'{depth} m', size=10, fill='muted', anchor='end'))
             color = DEPTH_COLORS.get(depth, NO_DEPTH_COLOR)
             for i, ok in enumerate(done):
                 x = grid_x + i * col_w + 1.5
@@ -155,19 +161,27 @@ def draw(fig):
                     out.append(f'<rect x="{x:.1f}" y="{y}" width="{w:.1f}" height="{CELL_H}" rx="2" fill="{color}"/>')
                 else:
                     out.append(f'<rect x="{x + .5:.1f}" y="{y + .5}" width="{w - 1:.1f}" height="{CELL_H - 1}" '
-                               f'rx="2" fill="none" stroke="{EMPTY}" stroke-opacity=".22"/>')
+                               f'rx="2" fill="none" stroke="{{empty}}" stroke-opacity=".22"/>')
             out.append(text(WIDTH - PAD, y + 10, str(sum(done)), size=11, anchor='end'))
             prev_site = site
             y += ROW_H
 
     height = int(y + PAD)
-    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {height}" width="{WIDTH}" '
+    template = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {height}" width="{WIDTH}" '
            f'height="{height}" role="img" aria-labelledby="t">\n'
            f'<title id="t">CoralScape 20K survey coverage, {fig["title"].lower()}: {summary}</title>\n'
-           f'<rect width="{WIDTH}" height="{height}" rx="16" fill="{BG}"/>\n'
            f'<g font-family="{FONT}">\n' + '\n'.join(out) + '\n</g>\n</svg>\n')
-    fig['output'].write_text(svg, encoding='utf-8')
-    print(f'Wrote {fig["output"].relative_to(ROOT)}: {summary}')
+    for theme, colors in THEMES.items():
+        out_path = IMG / f'{fig["output"]}_{theme}.svg'
+        out_path.write_text(fill_colors(template, colors), encoding='utf-8')
+        print(f'Wrote {out_path.relative_to(ROOT)}: {summary}')
+
+
+def fill_colors(template, colors):
+    """Substitutes {ink}, {muted}, ... placeholders without touching other braces."""
+    for name, value in colors.items():
+        template = template.replace('{' + name + '}', value)
+    return template
 
 
 if __name__ == '__main__':
